@@ -9,7 +9,23 @@
     
     <style>
         body { margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100%; } /* Mapa ocupa 100% da tela */
+        #map { height: 100vh; width: 100%; }
+        
+        /* Estilo para deixar o link do Street View com cara de botão */
+        .btn-streetview {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #4285F4;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+        }
+        .btn-streetview:hover {
+            background-color: #357ae8;
+        }
     </style>
 </head>
 <body>
@@ -19,45 +35,93 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inicializa o mapa (centralizado em uma coord genérica, ele ajusta depois)
-        var map = L.map('map').setView([-15.79, -47.88], 5);
+        // --- 1. DEFINIÇÃO DAS CAMADAS BASE (Fundo do mapa) ---
+        
+        // Camada 1: OpenStreetMap (Mapa de Ruas Padrão)
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        });
 
-        // 2. Adiciona o mapa de fundo (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        // Camada 2: Satélite (Esri World Imagery - Imagens reais)
+        var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles © Esri'
+        });
 
-        // 3. Função para colorir de acordo com o status
+        // Inicializa o mapa começando com a camada Satélite (ou mude para osm se preferir)
+        var map = L.map('map', {
+            center: [-15.79, -47.88], // Centro provisório
+            zoom: 5,
+            layers: [osm] // Começa com o mapa de ruas
+        });
+
+        // Cria o menu de controle de camadas (canto superior direito)
+        var baseMaps = {
+            "Mapa de Ruas": osm,
+            "Satélite (Real)": satellite
+        };
+        L.control.layers(baseMaps).addTo(map);
+
+
+        // --- 2. FUNÇÃO DE CORES ---
         function definirCor(status) {
-            switch (status) {
-                case 'Concluída': return '#28a745'; // Verde
-                case 'Em andamento': return '#ffc107'; // Amarelo
-                case 'Parada': return '#dc3545'; // Vermelho
-                case 'Manutenção': return '#17a2b8'; // Azul
-                default: return '#333'; // Cinza
-            }
+            // Converte para minusculo para evitar erros de digitação
+            var s = status ? status.toLowerCase() : ''; 
+            
+            if (s === 'concluida') return '#28a745';      // Verde
+            if (s === 'andamento') return '#ffc107';      // Amarelo
+            if (s === 'parada') return '#dc3545';         // Vermelho
+            if (s === 'manutencao') return '#17a2b8';     // Azul
+            return '#333';                                // Cor padrão
         }
 
-        // 4. Carrega o arquivo GeoJSON
+        // --- 3. CARREGAR OS DADOS ---
         fetch('obras.geojson')
             .then(response => response.json())
             .then(data => {
-                L.geoJSON(data, {
-                    style: function(feature) {
-                        return { color: definirCor(feature.properties.status) };
+                var geojsonLayer = L.geoJSON(data, {
+                    // Estilo do ponto
+                    pointToLayer: function (feature, latlng) {
+                        return L.circleMarker(latlng, {
+                            radius: 8,
+                            fillColor: definirCor(feature.properties.status),
+                            color: "#000",
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
                     },
+                    // O que acontece ao clicar (Popup)
                     onEachFeature: function (feature, layer) {
-                        // Cria o popup com informações
+                        // Pega as coordenadas para criar o link do Street View
+                        // GeoJSON guarda como [Longitude, Latitude], mas o Google quer [Lat, Lon]
+                        var lat = feature.geometry.coordinates[1];
+                        var lon = feature.geometry.coordinates[0];
+                        
+                        // Cria o link do Google Street View
+                        var linkStreetView = `https://www.google.com/maps?q&layer=c&cbll=${lat},${lon}`;
+
                         var popupContent = `
-                            <h3>${feature.properties.nome_obra || 'Obra Sem Nome'}</h3>
-                            <p><strong>Status:</strong> ${feature.properties.status}</p>
-                            <p><strong>Detalhes:</strong> ${feature.properties.descricao || 'Sem detalhes'}</p>
+                            <div style="font-family: Arial, sans-serif;">
+                                <h3 style="margin: 0 0 5px;">${feature.properties.nome_obra || 'Obra'}</h3>
+                                <hr style="border: 0; border-top: 1px solid #ccc;">
+                                <p><strong>Status:</strong> ${feature.properties.status}</p>
+                                <p>${feature.properties.descricao || ''}</p>
+                                
+                                <a href="${linkStreetView}" target="_blank" class="btn-streetview">
+                                    Entrar na Rua (Street View)
+                                </a>
+                            </div>
                         `;
                         layer.bindPopup(popupContent);
                     }
                 }).addTo(map);
+
+                // Ajusta o zoom automaticamente para ver todas as obras
+                map.fitBounds(geojsonLayer.getBounds());
             })
-            .catch(err => console.error("Erro ao carregar o GeoJSON: ", err));
+            .catch(err => console.error("Erro: ", err));
     </script>
 </body>
 </html>
