@@ -1,0 +1,10 @@
+{
+"type": "FeatureCollection",
+"name": "obras",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": null, "status": "andamento" }, "geometry": { "type": "Point", "coordinates": [ -43.516058800487066, -20.400137910444762 ] } },
+{ "type": "Feature", "properties": { "id": null, "status": "parada" }, "geometry": { "type": "Point", "coordinates": [ -43.506024673584378, -20.400034050391071 ] } },
+{ "type": "Feature", "properties": { "id": null, "status": "concluida" }, "geometry": { "type": "Point", "coordinates": [ -43.511125816467789, -20.391229378692707 ] } }
+]
+}

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Obras Públicas</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; } /* Mapa ocupa 100% da tela */
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 1. Inicializa o mapa (centralizado em uma coord genérica, ele ajusta depois)
+        var map = L.map('map').setView([-15.79, -47.88], 5);
+
+        // 2. Adiciona o mapa de fundo (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 3. Função para colorir de acordo com o status
+        function definirCor(status) {
+            switch (status) {
+                case 'Concluída': return '#28a745'; // Verde
+                case 'Em andamento': return '#ffc107'; // Amarelo
+                case 'Parada': return '#dc3545'; // Vermelho
+                case 'Manutenção': return '#17a2b8'; // Azul
+                default: return '#333'; // Cinza
+            }
+        }
+
+        // 4. Carrega o arquivo GeoJSON
+        fetch('obras.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: function(feature) {
+                        return { color: definirCor(feature.properties.status) };
+                    },
+                    onEachFeature: function (feature, layer) {
+                        // Cria o popup com informações
+                        var popupContent = `
+                            <h3>${feature.properties.nome_obra || 'Obra Sem Nome'}</h3>
+                            <p><strong>Status:</strong> ${feature.properties.status}</p>
+                            <p><strong>Detalhes:</strong> ${feature.properties.descricao || 'Sem detalhes'}</p>
+                        `;
+                        layer.bindPopup(popupContent);
+                    }
+                }).addTo(map);
+            })
+            .catch(err => console.error("Erro ao carregar o GeoJSON: ", err));
+    </script>
+</body>
+</html>
